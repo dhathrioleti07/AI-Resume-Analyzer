@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResumeAI - AI Resume Analyzer & Job Recommendation System</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bgDark: '#050816',
+                        bgCard: '#080B1A',
+                        bgElevated: '#0B1020',
+                        purplePrimary: '#7C3AED',
+                        purpleGlow: '#8B5CF6',
+                        purpleLight: '#A855F7',
+                        bluePrimary: '#2563EB',
+                        blueGlow: '#3B82F6',
+                        cyanGlow: '#22D3EE',
+                        pinkGlow: '#EC4899',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-12px)' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 15px rgba(124, 58, 237, 0.4)' },
+                            '100%': { boxShadow: '0 0 30px rgba(59, 130, 246, 0.8)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- PDF.js CDN for client-side PDF text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050816;
+            color: #F8FAFC;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism card utility */
+        .glass-card {
+            background: rgba(11, 16, 32, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card-hover:hover {
+            transform: translateY(-4px);
+            border-color: rgba(139, 92, 246, 0.35);
+            box-shadow: 0 12px 40px -10px rgba(124, 58, 237, 0.3);
+        }
+
+        /* Glowing background blobs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Gradient text utility */
+        .text-gradient-purple {
+            background: linear-gradient(135deg, #A855F7 0%, #3B82F6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .text-gradient-cyan {
+            background: linear-gradient(135deg, #22D3EE 0%, #3B82F6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050816;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1E293B;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        /* Circular progress styling */
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.08);
+            stroke-width: 3.8;
+        }
+        .circle-progress {
+            fill: none;
+            stroke-width: 3.8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative selection:bg-purpleGlow selection:text-white">
+
+    <div class="fixed top-0 left-1/4 w-[500px] h-[500px] bg-purplePrimary orb animate-pulse-slow"></div>
+    <div class="fixed bottom-10 right-10 w-[600px] h-[600px] bg-bluePrimary orb"></div>
+    <div class="fixed top-1/2 right-1/4 w-[400px] h-[400px] bg-pinkGlow orb opacity-20"></div>
+
+    <header class="sticky top-0 z-50 glass-card border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchPage('home')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purplePrimary to-blueGlow flex items-center justify-center shadow-lg shadow-purplePrimary/30">
+                    <i class="fa-solid me-0.5 fa-brain text-white text-xl"></i>
+                </div>
+                <div>
+                    <span class="text-2xl font-extrabold tracking-tight text-white">Resume<span class="text-gradient-purple">AI</span></span>
+                    <span class="hidden sm:inline-block text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 ml-2 rounded-full bg-purplePrimary/20 text-purpleGlow border border-purplePrimary/30">Pro SaaS</span>
+                </div>
+            </div>
+
+            <!-- Navigation Links (Desktop) -->
+            <nav class="hidden md:flex items-center space-x-1 lg:space-x-2">
+                <button onclick="switchPage('home')" id="nav-home" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-purpleGlow bg-purplePrimary/10">
+                    <i class="fa-solid fa-house mr-1.5 text-xs"></i>Home
+                </button>
+                <button onclick="switchPage('analyzer')" id="nav-analyzer" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-slate-300 hover:text-white hover:bg-white/5">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-1.5 text-xs"></i>Analyze Resume
+                </button>
+                <button onclick="switchPage('jobs')" id="nav-jobs" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-slate-300 hover:text-white hover:bg-white/5">
+                    <i class="fa-solid fa-briefcase mr-1.5 text-xs"></i>Job Matching
+                </button>
+                <button onclick="switchPage('dashboard')" id="nav-dashboard" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-slate-300 hover:text-white hover:bg-white/5">
+                    <i class="fa-solid fa-chart-pie mr-1.5 text-xs"></i>Dashboard
+                </button>
+                <button onclick="switchPage('about')" id="nav-about" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-slate-300 hover:text-white hover:bg-white/5">
+                    <i class="fa-solid fa-circle-info mr-1.5 text-xs"></i>About
+                </button>
+            </nav>
+
+            <!-- Action Buttons -->
+            <div class="hidden md:flex items-center space-x-3">
+                <button onclick="openSettingsModal()" class="p-2.5 rounded-xl border border-white/10 hover:border-purpleGlow/50 bg-white/5 text-slate-300 hover:text-white transition-all">
+                    <i class="fa-solid fa-sliders text-sm"></i>
+                </button>
+                <button onclick="switchPage('analyzer')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purplePrimary to-bluePrimary hover:from-purpleGlow hover:to-blueGlow text-white text-sm font-semibold shadow-lg shadow-purplePrimary/25 transition-all transform hover:-translate-y-0.5">
+                    Get Started <i class="fa-solid fa-arrow-right ml-1.5 text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Mobile Hamburger Button -->
+            <div class="md:hidden flex items-center">
+                <button onclick="toggleMobileMenu()" class="text-slate-300 hover:text-white p-2">
+                    <i class="fa-solid fa-bars text-xl" id="mobile-menu-icon"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Drawer Menu -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-white/10 bg-bgCard px-4 pt-2 pb-6 space-y-2">
+            <button onclick="switchPage('home'); toggleMobileMenu();" class="w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-white hover:bg-white/5">Home</button>
+            <button onclick="switchPage('analyzer'); toggleMobileMenu();" class="w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-white hover:bg-white/5">Analyze Resume</button>
+            <button onclick="switchPage('jobs'); toggleMobileMenu();" class="w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-white hover:bg-white/5">Job Matching</button>
+            <button onclick="switchPage('dashboard'); toggleMobileMenu();" class="w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-white hover:bg-white/5">Dashboard</button>
+            <button onclick="switchPage('about'); toggleMobileMenu();" class="w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-white hover:bg-white/5">About</button>
+            <button onclick="openSettingsModal(); toggleMobileMenu();" class="w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-purpleGlow hover:bg-white/5"><i class="fa-solid fa-gear mr-2"></i>API Settings</button>
+        </div>
+    </header>
+
+    <main class="flex-grow relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- ================= PAGE 1: LANDING HOME PAGE ================= -->
+        <section id="page-home" class="space-y-20 py-8">
+            <!-- Hero Section -->
+            <div class="text-center max-w-4xl mx-auto space-y-8 pt-8 sm:pt-12">
+                <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full glass-card border-purpleGlow/30 text-purpleGlow text-xs font-semibold tracking-wide animate-float">
+                    <span class="w-2 h-2 rounded-full bg-cyanGlow animate-ping"></span>
+                    <span>Next-Gen AI Resume Intelligence v3.5</span>
+                </div>
+                
+                <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none">
+                    AI-Powered Resume Analysis & <span class="text-gradient-purple">Job Matching</span>
+                </h1>
+
+                <p class="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
+                    Analyze your resume against ATS algorithms, detect key technical skills, generate tailored improvements, and match with high-paying tech jobs in seconds.
+                </p>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                    <button onclick="switchPage('analyzer')" class="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-purplePrimary via-purpleGlow to-bluePrimary hover:opacity-95 text-white font-bold text-base shadow-xl shadow-purplePrimary/30 transition-all transform hover:-translate-y-1 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-file-arrow-up"></i>
+                        <span>Analyze My Resume</span>
+                    </button>
+                    <button onclick="switchPage('jobs')" class="w-full sm:w-auto px-8 py-4 rounded-xl glass-card hover:bg-white/10 text-white font-semibold text-base transition-all border border-white/15 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-magnifying-glass font-normal"></i>
+                        <span>Explore Jobs</span>
+                    </button>
+                </div>
+
+                <!-- Fast Demo Quick Start Presets -->
+                <div class="pt-6 border-t border-white/10 max-w-xl mx-auto">
+                    <p class="text-xs uppercase font-bold tracking-wider text-slate-400 mb-3">Or test instantly with a demo resume:</p>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <button onclick="loadPresetResume('fullstack')" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-purplePrimary/20 text-slate-300 hover:text-purpleGlow border border-white/10 transition-all">
+                            <i class="fa-solid fa-code mr-1"></i> Full Stack Engineer
+                        </button>
+                        <button onclick="loadPresetResume('datascience')" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-bluePrimary/20 text-slate-300 hover:text-blueGlow border border-white/10 transition-all">
+                            <i class="fa-solid fa-chart-line mr-1"></i> Data Scientist / ML
+                        </button>
+                        <button onclick="loadPresetResume('uiux')" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-pinkGlow/20 text-slate-300 hover:text-pinkGlow border border-white/10 transition-all">
+                            <i class="fa-solid fa-palette mr-1"></i> UI/UX Designer
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Feature Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-8">
+                <div class="glass-card glass-card-hover p-6 rounded-2xl space-y-4">
+                    <div class="w-12 h-12 rounded-xl bg-purplePrimary/20 text-purpleGlow border border-purplePrimary/30 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">AI Resume Parsing</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Extracts skills, work experience, education, and project details with deep semantic understanding.
+                    </p>
+                </div>
+
+                <div class="glass-card glass-card-hover p-6 rounded-2xl space-y-4">
+                    <div class="w-12 h-12 rounded-xl bg-bluePrimary/20 text-blueGlow border border-bluePrimary/30 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-bullseye"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">ATS Compatibility</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Evaluates keyword density, formatting structure, and readability to pass automated recruiter screening.
+                    </p>
+                </div>
+
+                <div class="glass-card glass-card-hover p-6 rounded-2xl space-y-4">
+                    <div class="w-12 h-12 rounded-xl bg-cyanGlow/20 text-cyanGlow border border-cyanGlow/30 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-microchip"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">Skill Extraction</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Categorizes technical skills, programming languages, cloud frameworks, and key soft skills automatically.
+                    </p>
+                </div>
+
+                <div class="glass-card glass-card-hover p-6 rounded-2xl space-y-4">
+                    <div class="w-12 h-12 rounded-xl bg-pinkGlow/20 text-pinkGlow border border-pinkGlow/30 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-handshake"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">Smart Job Match</h3>
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Matches your calculated profile against real candidate criteria with missing skill gap feedback.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Stats Banner -->
+            <div class="glass-card rounded-2xl p-8 border border-white/10 bg-gradient-to-r from-purplePrimary/10 via-transparent to-bluePrimary/10">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                    <div>
+                        <div class="text-3xl sm:text-4xl font-extrabold text-gradient-purple">98.5%</div>
+                        <div class="text-xs uppercase font-medium tracking-wider text-slate-400 mt-1">Parsing Accuracy</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl sm:text-4xl font-extrabold text-gradient-cyan">15+</div>
+                        <div class="text-xs uppercase font-medium tracking-wider text-slate-400 mt-1">Local Job Datasets</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl sm:text-4xl font-extrabold text-white">&lt; 3 sec</div>
+                        <div class="text-xs uppercase font-medium tracking-wider text-slate-400 mt-1">Instant Speed</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl sm:text-4xl font-extrabold text-pinkGlow">100%</div>
+                        <div class="text-xs uppercase font-medium tracking-wider text-slate-400 mt-1">Free & Local</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 2: RESUME ANALYZER PAGE ================= -->
+        <section id="page-analyzer" class="hidden space-y-10">
+            <div class="text-center max-w-3xl mx-auto space-y-3">
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-white">
+                    AI Resume <span class="text-gradient-purple">Analyzer</span>
+                </h2>
+                <p class="text-slate-400 text-sm sm:text-base">
+                    Upload your PDF or Word resume to extract skills, calculate your ATS benchmark score, and receive actionable suggestions.
+                </p>
+            </div>
+
+            <!-- File Upload Box -->
+            <div class="max-w-3xl mx-auto">
+                <div id="drop-zone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" class="glass-card rounded-2xl p-8 sm:p-12 text-center border-2 border-dashed border-white/15 hover:border-purpleGlow/60 transition-all cursor-pointer relative overflow-hidden group">
+                    <input type="file" id="resume-file-input" accept=".pdf,.txt,.doc,.docx" onchange="handleFileSelect(event)" class="hidden">
+                    
+                    <div id="upload-idle-state" class="space-y-4">
+                        <div class="w-16 h-16 rounded-2xl bg-purplePrimary/20 text-purpleGlow border border-purplePrimary/30 flex items-center justify-center text-2xl mx-auto group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div>
+                            <p class="text-lg font-semibold text-white">Drag & drop your resume file here</p>
+                            <p class="text-sm text-slate-400 mt-1">Supports PDF, TXT, DOCX (Max size: 5 MB)</p>
+                        </div>
+                        <button onclick="document.getElementById('resume-file-input').click()" type="button" class="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-sm transition-all border border-white/10">
+                            Browse Files
+                        </button>
+                    </div>
+
+                    <!-- Selected File State -->
+                    <div id="upload-selected-state" class="hidden space-y-4">
+                        <div class="w-16 h-16 rounded-2xl bg-cyanGlow/20 text-cyanGlow border border-cyanGlow/30 flex items-center justify-center text-2xl mx-auto">
+                            <i class="fa-solid fa-file-lines"></i>
+                        </div>
+                        <div>
+                            <p id="selected-file-name" class="text-lg font-bold text-white">resume.pdf</p>
+                            <p id="selected-file-size" class="text-xs text-slate-400">1.2 MB</p>
+                        </div>
+                        <div class="flex items-center justify-center space-x-3">
+                            <button onclick="clearSelectedFile()" type="button" class="px-4 py-2 rounded-xl bg-red-500/20 text-red-300 hover:bg-red-500/30 text-xs font-semibold border border-red-500/30 transition-all">
+                                Remove File
+                            </button>
+                            <button onclick="startResumeAnalysis()" type="button" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purplePrimary to-bluePrimary text-white font-bold text-sm shadow-lg shadow-purplePrimary/30 hover:opacity-95 transition-all">
+                                <i class="fa-solid fa-play mr-1.5"></i> Analyze Resume Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Progress Loading Indicator -->
+                <div id="analysis-loading" class="hidden glass-card rounded-2xl p-8 mt-6 text-center space-y-4 border border-purplePrimary/30">
+                    <div class="w-12 h-12 border-4 border-purplePrimary border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <div>
+                        <p id="loading-step-text" class="text-base font-bold text-white">Reading your resume content...</p>
+                        <p class="text-xs text-slate-400 mt-1">Evaluating against standard ATS criteria</p>
+                    </div>
+                    <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                        <div id="analysis-progress-bar" class="bg-gradient-to-r from-purplePrimary to-cyanGlow h-full w-1/4 transition-all duration-500"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ANALYSIS RESULTS REPORT CONTAINER -->
+            <div id="analysis-results" class="hidden space-y-10">
+
+                <!-- Overall Scores Row -->
+                <div class="glass-card rounded-2xl p-6 sm:p-8 space-y-6">
+                    <div class="flex flex-col md:flex-row items-center justify-between border-b border-white/10 pb-6 gap-6">
+                        <div>
+                            <span class="text-xs uppercase font-bold tracking-widest text-purpleGlow">Overall Result</span>
+                            <h3 class="text-2xl font-bold text-white mt-1">Resume Evaluation Benchmark</h3>
+                            <p class="text-xs text-slate-400">Calculated based on structure, skills, impact keywords, and format clarity.</p>
+                        </div>
+                        <div class="flex items-center space-x-6">
+                            <!-- Overall Radial Score Gauge -->
+                            <div class="relative w-28 h-28 flex items-center justify-center">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path id="overall-score-circle" class="circle-progress stroke-purpleGlow" stroke-dasharray="100, 100" stroke-dashoffset="15" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <div class="absolute text-center">
+                                    <span id="score-overall-val" class="text-2xl font-extrabold text-white">85</span>
+                                    <span class="text-xs text-slate-400 block -mt-1">/100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grid of Score Breakdown Metric Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                        <div class="bg-white/5 p-4 rounded-xl border border-white/5 text-center">
+                            <p class="text-xs text-slate-400 font-medium">ATS Score</p>
+                            <p id="score-ats-val" class="text-xl font-bold text-cyanGlow mt-1">82%</p>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-xl border border-white/5 text-center">
+                            <p class="text-xs text-slate-400 font-medium">Skills Match</p>
+                            <p id="score-skills-val" class="text-xl font-bold text-purpleGlow mt-1">88%</p>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-xl border border-white/5 text-center">
+                            <p class="text-xs text-slate-400 font-medium">Experience</p>
+                            <p id="score-exp-val" class="text-xl font-bold text-blueGlow mt-1">75%</p>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-xl border border-white/5 text-center">
+                            <p class="text-xs text-slate-400 font-medium">Education</p>
+                            <p id="score-edu-val" class="text-xl font-bold text-emerald-400 mt-1">90%</p>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-xl border border-white/5 text-center col-span-2 sm:col-span-1">
+                            <p class="text-xs text-slate-400 font-medium">Action Verbs</p>
+                            <p id="score-verb-val" class="text-xl font-bold text-pinkGlow mt-1">80%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROFILE & EXTRACTED SKILLS GRID -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Profile Summary Card -->
+                    <div class="glass-card rounded-2xl p-6 space-y-4">
+                        <h4 class="text-lg font-bold text-white flex items-center">
+                            <i class="fa-solid fa-id-card text-purpleGlow mr-2"></i> Extracted Candidate Profile
+                        </h4>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-slate-400">Detected Name:</span>
+                                <span id="res-candidate-name" class="font-semibold text-white">Candidate</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-slate-400">Primary Role:</span>
+                                <span id="res-candidate-role" class="font-semibold text-purpleGlow">Software Engineer</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-slate-400">Est. Experience:</span>
+                                <span id="res-candidate-exp" class="font-semibold text-white">2 - 4 Years</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-white/5">
+                                <span class="text-slate-400">Contact Info:</span>
+                                <span id="res-candidate-contact" class="font-semibold text-emerald-400">Detected <i class="fa-solid fa-check-circle ml-1"></i></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technical & Soft Skills List -->
+                    <div class="glass-card rounded-2xl p-6 lg:col-span-2 space-y-6">
+                        <h4 class="text-lg font-bold text-white flex items-center">
+                            <i class="fa-solid fa-microchip text-blueGlow mr-2"></i> Detected Skills Matrix
+                        </h4>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Technical Skills</p>
+                            <div id="tech-skills-pills" class="flex flex-wrap gap-2">
+                                <!-- Dynamic Skill Pills -->
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Soft Skills & Methodologies</p>
+                            <div id="soft-skills-pills" class="flex flex-wrap gap-2">
+                                <!-- Dynamic Soft Skills -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RESUME IMPROVEMENT RECOMMENDATIONS -->
+                <div class="glass-card rounded-2xl p-6 sm:p-8 space-y-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-white flex items-center">
+                            <i class="fa-solid fa-lightbulb text-amber-400 mr-2.5"></i> How to Improve Your Resume
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Actionable recommendations prioritized by impact on recruiter ATS screeners.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- High Priority -->
+                        <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-5 space-y-3">
+                            <div class="flex items-center text-red-400 text-sm font-bold uppercase tracking-wider">
+                                <i class="fa-solid fa-triangle-exclamation mr-2"></i> High Priority
+                            </div>
+                            <ul id="improvements-high" class="space-y-2 text-xs text-slate-300">
+                                <!-- Dynamic items -->
+                            </ul>
+                        </div>
+
+                        <!-- Medium Priority -->
+                        <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-5 space-y-3">
+                            <div class="flex items-center text-amber-400 text-sm font-bold uppercase tracking-wider">
+                                <i class="fa-solid fa-circle-exclamation mr-2"></i> Medium Priority
+                            </div>
+                            <ul id="improvements-medium" class="space-y-2 text-xs text-slate-300">
+                                <!-- Dynamic items -->
+                            </ul>
+                        </div>
+
+                        <!-- Low Priority / Polishing -->
+                        <div class="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5 space-y-3">
+                            <div class="flex items-center text-blue-400 text-sm font-bold uppercase tracking-wider">
+                                <i class="fa-solid fa-circle-info mr-2"></i> Low Priority
+                            </div>
+                            <ul id="improvements-low" class="space-y-2 text-xs text-slate-300">
+                                <!-- Dynamic items -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button onclick="switchPage('jobs')" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-purplePrimary to-bluePrimary hover:from-purpleGlow hover:to-blueGlow text-white font-bold text-sm shadow-xl shadow-purplePrimary/30 transition-all">
+                        View Matching Job Recommendations <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 3: JOB RECOMMENDATIONS & MATCHING PAGE ================= -->
+        <section id="page-jobs" class="hidden space-y-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-white">Matched Job <span class="text-gradient-purple">Recommendations</span></h2>
+                    <p class="text-slate-400 text-sm mt-1">Jobs filtered and scored according to your extracted resume skills and experience profile.</p>
+                </div>
+
+                <div id="active-match-badge" class="glass-card px-4 py-2 rounded-xl border-purpleGlow/30 text-xs text-purpleGlow flex items-center space-x-2">
+                    <i class="fa-solid fa-filter"></i>
+                    <span>Matched with Candidate Skills</span>
+                </div>
+            </div>
+
+            <!-- Filters & Search Toolbar -->
+            <div class="glass-card rounded-2xl p-4 sm:p-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                        <input type="text" id="filter-search" oninput="filterAndRenderJobs()" placeholder="Search title, skills or company..." class="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purpleGlow">
+                    </div>
+
+                    <!-- Category Filter -->
+                    <div>
+                        <select id="filter-category" onchange="filterAndRenderJobs()" class="w-full bg-bgElevated border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purpleGlow">
+                            <option value="ALL">All Categories</option>
+                            <option value="Frontend">Frontend Development</option>
+                            <option value="Backend">Backend Development</option>
+                            <option value="Full Stack">Full Stack</option>
+                            <option value="Data & AI">Data Science & AI</option>
+                            <option value="DevOps & Cloud">DevOps & Cloud</option>
+                            <option value="Design">UI/UX Design</option>
+                        </select>
+                    </div>
+
+                    <!-- Min Match % Slider -->
+                    <div class="flex flex-col justify-center px-1">
+                        <div class="flex justify-between text-xs text-slate-400 mb-1">
+                            <span>Min Match Score:</span>
+                            <span id="min-match-label" class="font-bold text-purpleGlow">50%</span>
+                        </div>
+                        <input type="range" id="filter-min-match" min="0" max="90" value="50" step="5" oninput="document.getElementById('min-match-label').innerText = this.value + '%'; filterAndRenderJobs();" class="accent-purplePrimary cursor-pointer">
+                    </div>
+
+                    <!-- Sort By -->
+                    <div>
+                        <select id="filter-sort" onchange="filterAndRenderJobs()" class="w-full bg-bgElevated border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purpleGlow">
+                            <option value="match-desc">Sort by Highest Match %</option>
+                            <option value="salary-desc">Sort by Salary (High to Low)</option>
+                            <option value="title-asc">Sort by Title (A-Z)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job Cards Grid Container -->
+            <div id="jobs-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Dynamic Job Cards inserted via JavaScript -->
+            </div>
+        </section>
+
+        <!-- ================= PAGE 4: DASHBOARD PAGE ================= -->
+        <section id="page-dashboard" class="hidden space-y-8">
+            <div>
+                <h2 class="text-3xl font-extrabold text-white">Analytics <span class="text-gradient-purple">Dashboard</span></h2>
+                <p class="text-slate-400 text-sm mt-1">Deep visual statistics on candidate readiness, skill coverage, and industry fit.</p>
+            </div>
+
+            <!-- Top Metric Banner -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="glass-card rounded-2xl p-6 border-l-4 border-l-purplePrimary">
+                    <p class="text-xs uppercase font-bold text-slate-400">Resume Score</p>
+                    <div class="flex items-baseline space-x-2 mt-2">
+                        <span id="dash-score-val" class="text-3xl font-extrabold text-white">85</span>
+                        <span class="text-xs text-emerald-400 font-medium"><i class="fa-solid fa-arrow-up"></i> Top 15%</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Based on recent benchmark run</p>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6 border-l-4 border-l-blueGlow">
+                    <p class="text-xs uppercase font-bold text-slate-400">ATS Pass Likelihood</p>
+                    <div class="flex items-baseline space-x-2 mt-2">
+                        <span id="dash-ats-val" class="text-3xl font-extrabold text-blueGlow">82%</span>
+                        <span class="text-xs text-slate-400">High Match</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Standard corporate screener</p>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6 border-l-4 border-l-cyanGlow">
+                    <p class="text-xs uppercase font-bold text-slate-400">Extracted Skills</p>
+                    <div class="flex items-baseline space-x-2 mt-2">
+                        <span id="dash-skills-count" class="text-3xl font-extrabold text-cyanGlow">12</span>
+                        <span class="text-xs text-slate-400">Key Tags</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Technical & soft skills</p>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6 border-l-4 border-l-pinkGlow">
+                    <p class="text-xs uppercase font-bold text-slate-400">Top Recommended Role</p>
+                    <div class="mt-2">
+                        <span id="dash-top-role" class="text-lg font-bold text-pinkGlow truncate block">Full Stack Engineer</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">94% Compatibility</p>
+                </div>
+            </div>
+
+            <!-- Charts Grid Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Skill Category Radar Chart -->
+                <div class="glass-card rounded-2xl p-6 space-y-4">
+                    <h4 class="text-lg font-bold text-white flex items-center">
+                        <i class="fa-solid fa-chart-radar text-purpleGlow mr-2"></i> Skill Domain Distribution
+                    </h4>
+                    <div class="h-64 relative">
+                        <canvas id="chart-skills-domain"></canvas>
+                    </div>
+                </div>
+
+                <!-- Score Breakdown Bar Chart -->
+                <div class="glass-card rounded-2xl p-6 space-y-4">
+                    <h4 class="text-lg font-bold text-white flex items-center">
+                        <i class="fa-solid fa-chart-simple text-cyanGlow mr-2"></i> Resume Score Metrics
+                    </h4>
+                    <div class="h-64 relative">
+                        <canvas id="chart-score-breakdown"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 5: ABOUT PAGE ================= -->
+        <section id="page-about" class="hidden space-y-8 max-w-4xl mx-auto">
+            <div class="text-center space-y-3">
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-white">About <span class="text-gradient-purple">ResumeAI</span></h2>
+                <p class="text-slate-400 text-sm sm:text-base">An intelligent college submission & SaaS project for modern resume optimization.</p>
+            </div>
+
+            <div class="glass-card rounded-2xl p-8 space-y-6 leading-relaxed text-sm text-slate-300">
+                <h3 class="text-xl font-bold text-white border-b border-white/10 pb-3">Project Overview</h3>
+                <p>
+                    <strong>ResumeAI</strong> combines localized Natural Language Processing (NLP) heuristics with custom skill extraction models. It provides instant automated ATS benchmark scoring, actionable bullet point enhancements, and personalized job matching against local datasets without requiring expensive external cloud APIs.
+                </p>
+
+                <h3 class="text-xl font-bold text-white border-b border-white/10 pb-3 mt-6">Core Tech Stack</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                        <p class="font-bold text-purpleGlow text-base mb-1">Frontend Architecture</p>
+                        <p class="text-xs text-slate-400">Tailwind CSS, Inter Typography, FontAwesome Iconography, Chart.js Visualizations, and PDF.js client text parser.</p>
+                    </div>
+                    <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                        <p class="font-bold text-cyanGlow text-base mb-1">Analysis & Parsing Engine</p>
+                        <p class="text-xs text-slate-400">Regex section parser, dictionary skill matching engine, ATS score matrix, and optional Gemini 3 Flash API integration.</p>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-white border-b border-white/10 pb-3 mt-6">Local Setup & Deployment</h3>
+                <div class="bg-bgDark p-4 rounded-xl border border-white/10 font-mono text-xs text-emerald-400 overflow-x-auto">
+                    <p class="text-slate-500"># To run this project in VS Code:</p>
+                    <p>1. Open index.html directly in any web browser or use VS Code Live Server.</p>
+                    <p>2. Upload any PDF resume or use preset demo buttons to test analysis.</p>
+                    <p>3. Optionally add a Gemini API key in settings for deep LLM feedback.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JOB DETAILS MODAL -->
+    <div id="job-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-card max-w-2xl w-full rounded-2xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto border-purpleGlow/30 relative">
+            <button onclick="closeJobModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div>
+                <span id="modal-job-category" class="text-xs uppercase font-bold text-purpleGlow px-3 py-1 rounded-full bg-purplePrimary/20">Category</span>
+                <h3 id="modal-job-title" class="text-2xl font-extrabold text-white mt-2">Job Title</h3>
+                <p id="modal-job-company" class="text-sm text-slate-400">Company Name • Location</p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 bg-white/5 p-4 rounded-xl text-center text-xs">
+                <div>
+                    <span class="text-slate-400 block">Salary</span>
+                    <span id="modal-job-salary" class="font-bold text-emerald-400 text-sm">$120k - $150k</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block">Experience</span>
+                    <span id="modal-job-exp" class="font-bold text-white text-sm">3+ Years</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block">Match Score</span>
+                    <span id="modal-job-match" class="font-bold text-cyanGlow text-sm">88%</span>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <h4 class="text-sm font-bold text-white">Job Description</h4>
+                <p id="modal-job-desc" class="text-xs text-slate-300 leading-relaxed">Detailed job summary goes here...</p>
+            </div>
+
+            <div class="space-y-3">
+                <h4 class="text-sm font-bold text-white">Skills Analysis</h4>
+                <div>
+                    <p class="text-xs text-emerald-400 font-semibold mb-1">Matching Skills You Possess:</p>
+                    <div id="modal-matching-skills" class="flex flex-wrap gap-1.5"></div>
+                </div>
+                <div class="pt-2">
+                    <p class="text-xs text-amber-400 font-semibold mb-1">Missing / Required Skills to Learn:</p>
+                    <div id="modal-missing-skills" class="flex flex-wrap gap-1.5"></div>
+                </div>
+            </div>
+
+            <div class="space-y-2 bg-purplePrimary/10 p-4 rounded-xl border border-purplePrimary/20">
+                <h4 class="text-xs font-bold text-purpleGlow uppercase tracking-wider">Why This Matches You</h4>
+                <p id="modal-match-reason" class="text-xs text-slate-300">Detailed explanation...</p>
+            </div>
+
+            <div class="flex items-center justify-end space-x-3 pt-2">
+                <button onclick="closeJobModal()" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold">Close</button>
+                <button onclick="applyToJob()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purplePrimary to-bluePrimary text-white text-xs font-bold shadow-lg shadow-purplePrimary/30">Apply Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS & API MODAL -->
+    <div id="settings-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-card max-w-md w-full rounded-2xl p-6 space-y-6 border-white/20 relative">
+            <button onclick="closeSettingsModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="space-y-1">
+                <h3 class="text-xl font-bold text-white">Analysis Settings</h3>
+                <p class="text-xs text-slate-400">Configure parsing engine and optional Gemini AI integration.</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Optional Gemini API Key</label>
+                    <input type="password" id="gemini-api-key" placeholder="AIzaSy..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purpleGlow">
+                    <p class="text-[10px] text-slate-500 mt-1">Leave empty to use the fast, high-accuracy local NLP engine.</p>
+                </div>
+
+                <div class="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300 space-y-1">
+                    <p class="font-bold text-purpleGlow">Local Engine Active</p>
+                    <p class="text-[11px] text-slate-400">The local engine extracts 40+ skills, computes ATS compliance, and generates improvement recommendations completely offline.</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="saveSettings()" class="w-full py-2.5 rounded-xl bg-purplePrimary text-white font-bold text-xs shadow-lg shadow-purplePrimary/30">Save Preferences</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+    <script>
+        /* ================= STATE MANAGEMENT ================= */
+        let state = {
+            currentPage: 'home',
+            selectedFile: null,
+            extractedText: '',
+            analysisData: null,
+            geminiKey: '',
+            savedJobs: new Set()
+        };
+
+        /* PDF.js Global Worker Setup */
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        /* ================= 15 DEMO JOBS DATASET ================= */
+        const JOBS_DATABASE = [
+            {
+                id: 'job-1',
+                title: 'Senior Frontend Engineer',
+                company: 'TechCorp Inc.',
+                location: 'Remote / San Francisco',
+                salary: '$130,000 - $160,000',
+                experience: '3 - 5 Years',
+                category: 'Frontend',
+                skills: ['React', 'JavaScript', 'TypeScript', 'Tailwind CSS', 'HTML', 'CSS', 'Redux', 'Git'],
+                description: 'Build high-performance web applications with React, TypeScript, and modern CSS frameworks. Drive frontend architecture and user experience.'
+            },
+            {
+                id: 'job-2',
+                title: 'Full Stack Web Developer',
+                company: 'CloudScale Solutions',
+                location: 'New York, NY (Hybrid)',
+                salary: '$110,000 - $140,000',
+                experience: '2 - 4 Years',
+                category: 'Full Stack',
+                skills: ['React', 'Node.js', 'Express', 'JavaScript', 'MongoDB', 'REST APIs', 'Git', 'CSS'],
+                description: 'Join an agile engineering team delivering scalable cloud platforms. Work seamlessly across React frontends and Node.js REST API microservices.'
+            },
+            {
+                id: 'job-3',
+                title: 'Backend Software Engineer',
+                company: 'DataNexus Labs',
+                location: 'Austin, TX',
+                salary: '$120,000 - $150,000',
+                experience: '3+ Years',
+                category: 'Backend',
+                skills: ['Node.js', 'Python', 'SQL', 'PostgreSQL', 'Express', 'Docker', 'AWS', 'REST APIs'],
+                description: 'Architect resilient backend services, design relational databases, and streamline automated cloud deployments.'
+            },
+            {
+                id: 'job-4',
+                title: 'Machine Learning & AI Specialist',
+                company: 'Cognitive Mind AI',
+                location: 'Remote',
+                salary: '$140,000 - $180,000',
+                experience: '2 - 5 Years',
+                category: 'Data & AI',
+                skills: ['Python', 'Machine Learning', 'Data Analysis', 'SQL', 'Deep Learning', 'Git', 'Docker'],
+                description: 'Develop cutting-edge predictive AI models, optimize data processing pipelines, and deploy deep learning inference models.'
+            },
+            {
+                id: 'job-5',
+                title: 'React Frontend Developer',
+                company: 'WebPulse Media',
+                location: 'Chicago, IL',
+                salary: '$95,000 - $120,000',
+                experience: '1 - 3 Years',
+                category: 'Frontend',
+                skills: ['React', 'JavaScript', 'HTML', 'CSS', 'Tailwind CSS', 'Git', 'Redux'],
+                description: 'Create beautiful responsive interactive dashboards, component libraries, and web assets for enterprise clients.'
+            },
+            {
+                id: 'job-6',
+                title: 'Data Analyst',
+                company: 'Insight Metrics',
+                location: 'Seattle, WA',
+                salary: '$85,000 - $110,000',
+                experience: '1 - 3 Years',
+                category: 'Data & AI',
+                skills: ['Python', 'SQL', 'Data Analysis', 'Communication', 'Problem Solving', 'Git'],
+                description: 'Analyze complex datasets, generate executive reporting dashboards, and uncover valuable business intelligence insights.'
+            },
+            {
+                id: 'job-7',
+                title: 'DevOps & Cloud Engineer',
+                company: 'InfraScale Global',
+                location: 'Remote',
+                salary: '$125,000 - $155,000',
+                experience: '3 - 6 Years',
+                category: 'DevOps & Cloud',
+                skills: ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Linux', 'Python', 'Git', 'SQL'],
+                description: 'Manage automated CI/CD pipelines, optimize cloud infrastructure on AWS, and improve containerized deployment resilience.'
+            },
+            {
+                id: 'job-8',
+                title: 'UI/UX Product Designer',
+                company: 'DesignCraft Studio',
+                location: 'San Francisco, CA',
+                salary: '$100,000 - $130,000',
+                experience: '2 - 4 Years',
+                category: 'Design',
+                skills: ['Figma', 'UI/UX', 'Product Design', 'Communication', 'HTML', 'CSS'],
+                description: 'Design intuitive web and mobile user interfaces, create high-fidelity Figma interactive wireframes, and run user research.'
+            },
+            {
+                id: 'job-9',
+                title: 'Python Software Engineer',
+                company: 'FinTech Dynamics',
+                location: 'Boston, MA',
+                salary: '$115,000 - $145,000',
+                experience: '2 - 5 Years',
+                category: 'Backend',
+                skills: ['Python', 'Django', 'Flask', 'SQL', 'PostgreSQL', 'Docker', 'REST APIs', 'Git'],
+                description: 'Build fast secure financial transaction systems and algorithmic processing platforms utilizing Python and SQL.'
+            },
+            {
+                id: 'job-10',
+                title: 'Java Enterprise Engineer',
+                company: 'Global Systems Inc.',
+                location: 'Atlanta, GA',
+                salary: '$110,000 - $135,000',
+                experience: '3+ Years',
+                category: 'Backend',
+                skills: ['Java', 'Spring Boot', 'SQL', 'Docker', 'REST APIs', 'Git', 'Problem Solving'],
+                description: 'Engineer high-throughput enterprise backend microservices and maintain core enterprise legacy software suites.'
+            },
+            {
+                id: 'job-11',
+                title: 'Mobile App Developer (React Native)',
+                company: 'AppVibe Innovations',
+                location: 'Remote',
+                salary: '$105,000 - $135,000',
+                experience: '2 - 4 Years',
+                category: 'Frontend',
+                skills: ['React Native', 'React', 'JavaScript', 'TypeScript', 'Redux', 'Git', 'UI/UX'],
+                description: 'Develop high quality cross-platform iOS and Android mobile applications using React Native.'
+            },
+            {
+                id: 'job-12',
+                title: 'QA Automation Engineer',
+                company: 'QualityFirst Tech',
+                location: 'Denver, CO',
+                salary: '$85,000 - $105,000',
+                experience: '2 - 4 Years',
+                category: 'Backend',
+                skills: ['Python', 'JavaScript', 'QA Testing', 'CI/CD', 'Git', 'Problem Solving'],
+                description: 'Design comprehensive automated regression test suites and collaborate with engineering to maintain software reliability.'
+            },
+            {
+                id: 'job-13',
+                title: 'Junior Web Developer',
+                company: 'InnovateX Startup',
+                location: 'Remote',
+                salary: '$65,000 - $85,000',
+                experience: '0 - 2 Years',
+                category: 'Full Stack',
+                skills: ['HTML', 'CSS', 'JavaScript', 'React', 'Git', 'Communication'],
+                description: 'Great entry-level opportunity for a motivated junior developer looking to build real-world web apps with modern web tools.'
+            },
+            {
+                id: 'job-14',
+                title: 'Cloud Security Architect',
+                company: 'CyberShield Systems',
+                location: 'Washington, DC',
+                salary: '$145,000 - $185,000',
+                experience: '5+ Years',
+                category: 'DevOps & Cloud',
+                skills: ['AWS', 'Cybersecurity', 'Docker', 'Linux', 'Python', 'Communication'],
+                description: 'Audit cloud infrastructure, safeguard corporate networks, and enforce zero-trust cloud deployment protocols.'
+            },
+            {
+                id: 'job-15',
+                title: 'Data Scientist',
+                company: 'MachineMind Analytics',
+                location: 'San Jose, CA',
+                salary: '$130,000 - $165,000',
+                experience: '3 - 5 Years',
+                category: 'Data & AI',
+                skills: ['Python', 'Machine Learning', 'Data Analysis', 'SQL', 'Communication', 'Git'],
+                description: 'Extract statistical insights, build machine learning models, and communicate recommendations to key decision-makers.'
+            }
+        ];
+
+        /* ================= PRESET DEMO RESUMES ================= */
+        const PRESET_RESUMES = {
+            fullstack: `ALEX MORGAN
+Full Stack Developer | alex.morgan@email.com | GitHub: github.com/alexmorgan | LinkedIn: linkedin.com/in/alexmorgan
+
+SUMMARY
+Energetic Full Stack Engineer with 3+ years of experience building modern web applications. Skilled in React, JavaScript, Node.js, Express, MongoDB, HTML, and CSS. Passionate about clean code, UI design, and scalable REST API development.
+
+TECHNICAL SKILLS
+- Languages: JavaScript, HTML5, CSS3, TypeScript, SQL
+- Frameworks & Libraries: React, Node.js, Express, Tailwind CSS, Redux
+- Databases & Tools: MongoDB, PostgreSQL, Git, Docker, REST APIs, Postman
+
+EXPERIENCE
+Software Engineer | TechScale Inc. | 2022 - Present
+- Engineered responsive user interfaces in React, boosting user engagement by 35%.
+- Developed backend RESTful APIs using Node.js and Express, supporting over 50,000 daily active users.
+- Optimized MongoDB queries and reduced server response time by 40%.
+- Collaborated in an agile team using Git and Jira for weekly sprint releases.
+
+Junior Web Developer | CodeCraft Agency | 2021 - 2022
+- Built custom client landing pages using HTML, CSS, JavaScript, and Tailwind CSS.
+- Integrated third-party payment APIs and automated user notification webhooks.
+
+EDUCATION
+Bachelor of Science in Computer Science | State University | Graduated 2021
+Relevant Coursework: Data Structures, Web Development, Database Systems, Software Engineering.
+
+PROJECTS
+- E-Commerce Web App: Full stack platform built with React, Node.js, Express, and MongoDB featuring user auth and stripe payments.
+- Real-Time Chat App: WebSockets chat application developed with Node.js and React.`,
+
+            datascience: `DR. TAYLOR REED
+Data Scientist & ML Engineer | taylor.reed@email.com | Seattle, WA
+
+SUMMARY
+Results-driven Data Scientist with 4 years of experience delivering machine learning models, data analysis pipelines, and predictive analytics in Python and SQL. Experienced with PyTorch, TensorFlow, Pandas, and AWS deployment.
+
+TECHNICAL SKILLS
+- Programming: Python, R, SQL, C++
+- Data Science & ML: Machine Learning, Deep Learning, Data Analysis, Pandas, NumPy, Scikit-learn, TensorFlow
+- Tools & Cloud: AWS, Docker, Git, Tableau, Jupyter Notebooks
+
+EXPERIENCE
+Senior Data Scientist | MachineMind Labs | 2022 - Present
+- Built predictive customer churn machine learning model in Python, saving $200k annually.
+- Processed multi-terabyte datasets using SQL and Pandas data pipelines.
+- Deployed trained deep learning models to AWS cloud instances with Docker.
+
+Data Analyst | Analytics Pro | 2020 - 2022
+- Created automated financial reporting dashboards and SQL data extraction scripts.
+
+EDUCATION
+Master of Science in Data Science | Tech Institute | 2020
+Bachelor of Science in Mathematics | Tech Institute | 2018`,
+
+            uiux: `JORDAN LEE
+Lead UI/UX Product Designer | jordan.lee@design.io | San Francisco, CA
+
+SUMMARY
+Creative UI/UX Designer with 4 years of experience building user-centered digital products, wireframes, and design systems in Figma. Strong understanding of HTML, CSS, user research, and interactive prototyping.
+
+TECHNICAL SKILLS
+- Design Tools: Figma, UI/UX, Product Design, Prototyping, Wireframing, Adobe XD
+- Frontend Knowledge: HTML, CSS, JavaScript, Responsive Design
+- Methodologies: User Research, Design Systems, Agile, Communication, Teamwork
+
+EXPERIENCE
+Product Designer | DesignStudio | 2021 - Present
+- Redesigned core mobile application UI in Figma, increasing user retention by 28%.
+- Conducted 50+ user research interviews and developed interactive wireframe prototypes.
+
+EDUCATION
+Bachelor of Arts in Interaction Design | Design Academy | 2020`
+        };
+
+        /* ================= LOCAL HEURISTIC PARSING ENGINE ================= */
+        const SKILLS_DICTIONARY = [
+            'JavaScript', 'Python', 'Java', 'React', 'Node.js', 'Express', 'SQL', 'MongoDB',
+            'HTML', 'CSS', 'Git', 'AWS', 'Docker', 'Machine Learning', 'Data Analysis',
+            'Figma', 'TypeScript', 'Tailwind CSS', 'Redux', 'PostgreSQL', 'REST APIs',
+            'Deep Learning', 'TensorFlow', 'CI/CD', 'Kubernetes', 'Linux', 'UI/UX',
+            'Spring Boot', 'Django', 'Flask', 'React Native', 'QA Testing', 'Cybersecurity',
+            'Communication', 'Problem Solving', 'Leadership', 'Teamwork', 'Agile', 'Product Design'
+        ];
+
+        function analyzeTextLocally(text) {
+            const lowerText = text.toLowerCase();
+            
+            // 1. Detect Technical and Soft Skills
+            const detectedSkills = [];
+            SKILLS_DICTIONARY.forEach(skill => {
+                if (lowerText.includes(skill.toLowerCase())) {
+                    detectedSkills.push(skill);
+                }
+            });
+
+            // Fallback skills if text is very short
+            if (detectedSkills.length === 0) {
+                detectedSkills.push('JavaScript', 'HTML', 'CSS', 'Communication', 'Problem Solving');
+            }
+
+            // Categorize Skills
+            const techSkills = detectedSkills.filter(s => !['Communication', 'Problem Solving', 'Leadership', 'Teamwork', 'Agile', 'Product Design', 'UI/UX'].includes(s));
+            const softSkills = detectedSkills.filter(s => ['Communication', 'Problem Solving', 'Leadership', 'Teamwork', 'Agile', 'Product Design', 'UI/UX'].includes(s));
+
+            // 2. Section Checks
+            const hasEdu = /education|bachelor|master|degree|university|college/i.test(text);
+            const hasExp = /experience|work|employment|position|developer|engineer|manager/i.test(text);
+            const hasProj = /project|built|developed|created|github/i.test(text);
+            const hasContact = /email|phone|linkedin|github|@|\d{10}/i.test(text);
+
+            // 3. Action Verbs Check
+            const actionVerbs = ['developed', 'engineered', 'built', 'managed', 'created', 'optimized', 'designed', 'increased', 'reduced', 'spearheaded', 'achieved'];
+            let actionVerbCount = 0;
+            actionVerbs.forEach(v => {
+                if (lowerText.includes(v)) actionVerbCount++;
+            });
+
+            // 4. Score Calculations
+            const atsScore = Math.min(98, Math.max(55, (hasEdu ? 25 : 10) + (hasExp ? 30 : 10) + (hasContact ? 25 : 5) + (hasProj ? 15 : 5)));
+            const skillsScore = Math.min(95, Math.max(50, detectedSkills.length * 7));
+            const expScore = hasExp ? 85 : 60;
+            const eduScore = hasEdu ? 90 : 65;
+            const verbScore = Math.min(95, 50 + (actionVerbCount * 6));
+            const overallScore = Math.round((atsScore * 0.3) + (skillsScore * 0.3) + (expScore * 0.2) + (eduScore * 0.1) + (verbScore * 0.1));
+
+            // 5. Candidate Profile Extraction
+            let candidateName = 'Candidate';
+            const lines = text.split('\n').filter(l => l.trim().length > 0);
+            if (lines.length > 0 && lines[0].length < 35 && !lines[0].includes('@')) {
+                candidateName = lines[0].trim();
+            }
+
+            let candidateRole = 'Software Engineer';
+            if (lowerText.includes('data scientist') || lowerText.includes('machine learning')) candidateRole = 'Data Scientist';
+            else if (lowerText.includes('ui/ux') || lowerText.includes('designer')) candidateRole = 'UI/UX Product Designer';
+            else if (lowerText.includes('full stack')) candidateRole = 'Full Stack Developer';
+            else if (lowerText.includes('frontend')) candidateRole = 'Frontend Developer';
+            else if (lowerText.includes('backend')) candidateRole = 'Backend Developer';
+
+            // 6. Generate Improvement Items
+            const improvementsHigh = [];
+            const improvementsMedium = [];
+            const improvementsLow = [];
+
+            if (!hasContact) improvementsHigh.push("Add clear contact information (email, phone, LinkedIn profile link).");
+            if (actionVerbCount < 3) improvementsHigh.push("Incorporate strong action verbs like 'Engineered', 'Optimized', and 'Spearheaded'.");
+            if (detectedSkills.length < 8) improvementsHigh.push("List more specific technical frameworks and modern tech stack keywords.");
+
+            if (!hasProj) improvementsMedium.push("Add a dedicated 'Projects' section featuring live links or GitHub repositories.");
+            improvementsMedium.push("Quantify achievements with metrics (e.g., 'improved performance by 30%').");
+            improvementsMedium.push("Ensure consistent date formatting across all work history entries.");
+
+            improvementsLow.push("Keep resume layout clean with standard single-column ATS formatting.");
+            improvementsLow.push("Verify there are no typographical or spelling errors in technical tool names.");
+
+            return {
+                overallScore,
+                atsScore,
+                skillsScore,
+                expScore,
+                eduScore,
+                verbScore,
+                candidateName,
+                candidateRole,
+                candidateExp: '2 - 4 Years',
+                techSkills,
+                softSkills: softSkills.length > 0 ? softSkills : ['Communication', 'Problem Solving', 'Teamwork'],
+                improvementsHigh,
+                improvementsMedium,
+                improvementsLow
+            };
+        }
+
+        /* ================= NAVIGATION & VIEW SWITCHING ================= */
+        function switchPage(pageId) {
+            state.currentPage = pageId;
+            const pages = ['home', 'analyzer', 'jobs', 'dashboard', 'about'];
+            
+            pages.forEach(p => {
+                const pageEl = document.getElementById(`page-${p}`);
+                const navBtn = document.getElementById(`nav-${p}`);
+                if (pageEl) {
+                    if (p === pageId) pageEl.classList.remove('hidden');
+                    else pageEl.classList.add('hidden');
+                }
+                if (navBtn) {
+                    if (p === pageId) {
+                        navBtn.className = "px-4 py-2 rounded-lg text-sm font-medium transition-colors text-purpleGlow bg-purplePrimary/10";
+                    } else {
+                        navBtn.className = "px-4 py-2 rounded-lg text-sm font-medium transition-colors text-slate-300 hover:text-white hover:bg-white/5";
+                    }
+                }
+            });
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (pageId === 'jobs') {
+                filterAndRenderJobs();
+            } else if (pageId === 'dashboard') {
+                renderDashboardCharts();
+            }
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function openSettingsModal() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+        function saveSettings() {
+            state.geminiKey = document.getElementById('gemini-api-key').value.trim();
+            showToast('Settings saved successfully!', 'success');
+            closeSettingsModal();
+        }
+
+        /* ================= FILE UPLOAD & PARSING ================= */
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('drop-zone').classList.add('border-purpleGlow');
+        }
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('drop-zone').classList.remove('border-purpleGlow');
+        }
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('drop-zone').classList.remove('border-purpleGlow');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                processFile(e.dataTransfer.files[0]);
+            }
+        }
+        function handleFileSelect(e) {
+            if (e.target.files && e.target.files[0]) {
+                processFile(e.target.files[0]);
+            }
+        }
+
+        function processFile(file) {
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('File size exceeds 5MB limit. Please upload a smaller file.', 'error');
+                return;
+            }
+            state.selectedFile = file;
+            document.getElementById('upload-idle-state').classList.add('hidden');
+            document.getElementById('upload-selected-state').classList.remove('hidden');
+            document.getElementById('selected-file-name').innerText = file.name;
+            document.getElementById('selected-file-size').innerText = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+            showToast('File selected: ' + file.name, 'info');
+        }
+
+        function clearSelectedFile() {
+            state.selectedFile = null;
+            state.extractedText = '';
+            document.getElementById('upload-selected-state').classList.add('hidden');
+            document.getElementById('upload-idle-state').classList.remove('hidden');
+            document.getElementById('resume-file-input').value = '';
+        }
+
+        function loadPresetResume(presetKey) {
+            switchPage('analyzer');
+            state.extractedText = PRESET_RESUMES[presetKey] || PRESET_RESUMES.fullstack;
+            document.getElementById('upload-idle-state').classList.add('hidden');
+            document.getElementById('upload-selected-state').classList.remove('hidden');
+            document.getElementById('selected-file-name').innerText = `Preset_${presetKey.toUpperCase()}_Resume.txt`;
+            document.getElementById('selected-file-size').innerText = '0.05 MB';
+            showToast(`Loaded ${presetKey.toUpperCase()} preset resume!`, 'success');
+            startResumeAnalysis();
+        }
+
+        /* ================= ANALYSIS WORKFLOW ================= */
+        async function startResumeAnalysis() {
+            document.getElementById('analysis-loading').classList.remove('hidden');
+            document.getElementById('analysis-results').classList.add('hidden');
+
+            const progressBar = document.getElementById('analysis-progress-bar');
+            const stepText = document.getElementById('loading-step-text');
+
+            // 1. Reading content
+            progressBar.style.width = '25%';
+            stepText.innerText = "Reading resume content...";
+
+            if (state.selectedFile && !state.extractedText) {
+                if (state.selectedFile.type === "application/pdf") {
+                    try {
+                        const arrayBuffer = await state.selectedFile.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        let fullText = "";
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+                        }
+                        state.extractedText = fullText;
+                    } catch (err) {
+                        console.error("PDF parse error:", err);
+                        state.extractedText = "Fallback extracted text from resume.";
+                    }
+                } else {
+                    state.extractedText = await state.selectedFile.text();
+                }
+            }
+
+            await new Promise(r => setTimeout(r, 600));
+
+            // 2. Extracting skills
+            progressBar.style.width = '50%';
+            stepText.innerText = "Extracting technical skills & qualifications...";
+            await new Promise(r => setTimeout(r, 600));
+
+            // 3. ATS Benchmark calculation
+            progressBar.style.width = '75%';
+            stepText.innerText = "Calculating ATS score & resume impact...";
+            await new Promise(r => setTimeout(r, 600));
+
+            // 4. Finalizing
+            progressBar.style.width = '100%';
+            stepText.innerText = "Finalizing recommendations...";
+            await new Promise(r => setTimeout(r, 400));
+
+            // Run Analysis
+            state.analysisData = analyzeTextLocally(state.extractedText || PRESET_RESUMES.fullstack);
+            renderAnalysisResults(state.analysisData);
+
+            document.getElementById('analysis-loading').classList.add('hidden');
+            document.getElementById('analysis-results').classList.remove('hidden');
+
+            try {
+                confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+            } catch(e){}
+
+            showToast('Resume analysis completed!', 'success');
+        }
+
+        function renderAnalysisResults(data) {
+            // Scores
+            document.getElementById('score-overall-val').innerText = data.overallScore;
+            document.getElementById('score-ats-val').innerText = data.atsScore + '%';
+            document.getElementById('score-skills-val').innerText = data.skillsScore + '%';
+            document.getElementById('score-exp-val').innerText = data.expScore + '%';
+            document.getElementById('score-edu-val').innerText = data.eduScore + '%';
+            document.getElementById('score-verb-val').innerText = data.verbScore + '%';
+
+            // Radial Gauge Offset
+            const circle = document.getElementById('overall-score-circle');
+            const dashoffset = 100 - data.overallScore;
+            circle.setAttribute('stroke-dashoffset', dashoffset);
+
+            // Profile
+            document.getElementById('res-candidate-name').innerText = data.candidateName;
+            document.getElementById('res-candidate-role').innerText = data.candidateRole;
+            document.getElementById('res-candidate-exp').innerText = data.candidateExp;
+
+            // Technical Skills Pills
+            const techContainer = document.getElementById('tech-skills-pills');
+            techContainer.innerHTML = data.techSkills.map(s => `
+                <span class="px-3 py-1 rounded-lg bg-purplePrimary/20 border border-purplePrimary/30 text-purpleGlow text-xs font-semibold">
+                    <i class="fa-solid fa-code text-[10px] mr-1"></i>${s}
+                </span>
+            `).join('');
+
+            // Soft Skills Pills
+            const softContainer = document.getElementById('soft-skills-pills');
+            softContainer.innerHTML = data.softSkills.map(s => `
+                <span class="px-3 py-1 rounded-lg bg-bluePrimary/20 border border-bluePrimary/30 text-blueGlow text-xs font-semibold">
+                    <i class="fa-solid fa-check text-[10px] mr-1"></i>${s}
+                </span>
+            `).join('');
+
+            // Improvements List
+            document.getElementById('improvements-high').innerHTML = data.improvementsHigh.map(i => `<li class="flex items-start"><i class="fa-solid fa-angle-right mr-1.5 mt-0.5 text-red-400"></i>${i}</li>`).join('');
+            document.getElementById('improvements-medium').innerHTML = data.improvementsMedium.map(i => `<li class="flex items-start"><i class="fa-solid fa-angle-right mr-1.5 mt-0.5 text-amber-400"></i>${i}</li>`).join('');
+            document.getElementById('improvements-low').innerHTML = data.improvementsLow.map(i => `<li class="flex items-start"><i class="fa-solid fa-angle-right mr-1.5 mt-0.5 text-blue-400"></i>${i}</li>`).join('');
+        }
+
+        /* ================= JOB MATCHING ENGINE ================= */
+        function calculateJobMatch(job, userSkills) {
+            if (!userSkills || userSkills.length === 0) {
+                userSkills = ['React', 'JavaScript', 'HTML', 'CSS', 'Node.js', 'Git'];
+            }
+
+            const lowerUserSkills = userSkills.map(s => s.toLowerCase());
+            const matchingSkills = [];
+            const missingSkills = [];
+
+            job.skills.forEach(reqSkill => {
+                if (lowerUserSkills.some(us => us.includes(reqSkill.toLowerCase()) || reqSkill.toLowerCase().includes(us))) {
+                    matchingSkills.push(reqSkill);
+                } else {
+                    missingSkills.push(reqSkill);
+                }
+            });
+
+            const skillMatchPct = matchingSkills.length / job.skills.length;
+            const matchScore = Math.min(98, Math.max(45, Math.round(skillMatchPct * 100)));
+
+            return {
+                matchScore,
+                matchingSkills,
+                missingSkills
+            };
+        }
+
+        function filterAndRenderJobs() {
+            const searchQuery = document.getElementById('filter-search').value.toLowerCase();
+            const categoryFilter = document.getElementById('filter-category').value;
+            const minMatch = parseInt(document.getElementById('filter-min-match').value) || 0;
+            const sortBy = document.getElementById('filter-sort').value;
+
+            const userSkills = state.analysisData ? [...state.analysisData.techSkills, ...state.analysisData.softSkills] : ['React', 'JavaScript', 'HTML', 'CSS', 'Node.js', 'Git'];
+
+            let filtered = JOBS_DATABASE.map(job => {
+                const matchRes = calculateJobMatch(job, userSkills);
+                return { ...job, ...matchRes };
+            });
+
+            // Filters
+            filtered = filtered.filter(job => {
+                const matchesSearch = job.title.toLowerCase().includes(searchQuery) ||
+                                      job.company.toLowerCase().includes(searchQuery) ||
+                                      job.skills.some(s => s.toLowerCase().includes(searchQuery));
+                const matchesCat = categoryFilter === 'ALL' || job.category === categoryFilter;
+                const matchesMin = job.matchScore >= minMatch;
+
+                return matchesSearch && matchesCat && matchesMin;
+            });
+
+            // Sorting
+            if (sortBy === 'match-desc') {
+                filtered.sort((a, b) => b.matchScore - a.matchScore);
+            } else if (sortBy === 'salary-desc') {
+                filtered.sort((a, b) => b.salary.localeCompare(a.salary));
+            } else if (sortBy === 'title-asc') {
+                filtered.sort((a, b) => a.title.localeCompare(b.title));
+            }
+
+            const container = document.getElementById('jobs-grid');
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full glass-card rounded-2xl p-12 text-center text-slate-400 space-y-3">
+                        <i class="fa-solid fa-folder-open text-4xl text-slate-600"></i>
+                        <p class="text-base font-semibold text-white">No job matches found</p>
+                        <p class="text-xs">Try lowering your minimum match score filter or adjusting search terms.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(job => `
+                <div class="glass-card glass-card-hover rounded-2xl p-6 space-y-4 border border-white/10 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <span class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-purplePrimary/20 text-purpleGlow border border-purplePrimary/30">${job.category}</span>
+                                <h3 class="text-lg font-bold text-white mt-2 leading-snug">${job.title}</h3>
+                                <p class="text-xs text-slate-400">${job.company} • ${job.location}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-lg font-black text-cyanGlow">${job.matchScore}%</span>
+                                <span class="text-[10px] text-slate-400 block -mt-1">Match</span>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-300 line-clamp-2 leading-relaxed">${job.description}</p>
+
+                        <div class="space-y-1.5 pt-1">
+                            <div class="flex flex-wrap gap-1">
+                                ${job.matchingSkills.slice(0, 4).map(s => `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-medium border border-emerald-500/30"><i class="fa-solid fa-check text-[8px] mr-1"></i>${s}</span>`).join('')}
+                                ${job.missingSkills.slice(0, 2).map(s => `<span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px] font-medium border border-amber-500/20">${s}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-white/10 flex items-center justify-between">
+                        <span class="text-xs font-bold text-emerald-400">${job.salary}</span>
+                        <button onclick='openJobModal(${JSON.stringify(job).replace(/'/g, "&apos;")})' class="px-4 py-2 rounded-xl bg-white/10 hover:bg-purplePrimary text-white text-xs font-semibold transition-all">
+                            View Match <i class="fa-solid fa-arrow-right ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /* ================= JOB MODAL & APPLICATION ================= */
+        function openJobModal(job) {
+            document.getElementById('modal-job-category').innerText = job.category;
+            document.getElementById('modal-job-title').innerText = job.title;
+            document.getElementById('modal-job-company').innerText = `${job.company} • ${job.location}`;
+            document.getElementById('modal-job-salary').innerText = job.salary;
+            document.getElementById('modal-job-exp').innerText = job.experience;
+            document.getElementById('modal-job-match').innerText = job.matchScore + '%';
+            document.getElementById('modal-job-desc').innerText = job.description;
+
+            document.getElementById('modal-matching-skills').innerHTML = job.matchingSkills.map(s => `
+                <span class="px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium"><i class="fa-solid fa-check mr-1"></i>${s}</span>
+            `).join('');
+
+            document.getElementById('modal-missing-skills').innerHTML = job.missingSkills.map(s => `
+                <span class="px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-medium">${s}</span>
+            `).join('');
+
+            document.getElementById('modal-match-reason').innerText = `Your profile strongly aligns with ${job.title} because you hold key competencies in ${job.matchingSkills.slice(0, 3).join(', ')}. Acquiring skills in ${job.missingSkills.slice(0, 2).join(', ')} will bring your fit to 100%.`;
+
+            document.getElementById('job-modal').classList.remove('hidden');
+        }
+
+        function closeJobModal() {
+            document.getElementById('job-modal').classList.add('hidden');
+        }
+
+        function applyToJob() {
+            showToast('Application submitted successfully to employer!', 'success');
+            closeJobModal();
+        }
+
+        /* ================= DASHBOARD CHARTS ================= */
+        let chartSkillsDomain = null;
+        let chartScoreBreakdown = null;
+
+        function renderDashboardCharts() {
+            if (chartSkillsDomain) chartSkillsDomain.destroy();
+            if (chartScoreBreakdown) chartScoreBreakdown.destroy();
+
+            // Chart 1: Skill Domain Distribution Radar
+            const ctx1 = document.getElementById('chart-skills-domain').getContext('2d');
+            chartSkillsDomain = new Chart(ctx1, {
+                type: 'radar',
+                data: {
+                    labels: ['Frontend', 'Backend', 'Data/AI', 'DevOps/Cloud', 'UI/UX Design', 'Soft Skills'],
+                    datasets: [{
+                        label: 'Candidate Competency',
+                        data: [85, 75, 60, 50, 40, 90],
+                        backgroundColor: 'rgba(139, 92, 246, 0.25)',
+                        borderColor: '#8B5CF6',
+                        pointBackgroundColor: '#22D3EE',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#94A3B8', font: { size: 11 } },
+                            ticks: { display: false, backdropColor: 'transparent' }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Chart 2: Score Metrics Bar
+            const ctx2 = document.getElementById('chart-score-breakdown').getContext('2d');
+            const dataScores = state.analysisData ? 
+                [state.analysisData.atsScore, state.analysisData.skillsScore, state.analysisData.expScore, state.analysisData.eduScore, state.analysisData.verbScore] : 
+                [82, 88, 75, 90, 80];
+
+            chartScoreBreakdown = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['ATS Compatibility', 'Skills Match', 'Experience', 'Education', 'Action Verbs'],
+                    datasets: [{
+                        label: 'Score Metric',
+                        data: dataScores,
+                        backgroundColor: [
+                            'rgba(34, 211, 238, 0.8)',
+                            'rgba(139, 92, 246, 0.8)',
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(52, 211, 153, 0.8)',
+                            'rgba(236, 72, 153, 0.8)'
+                        ],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94A3B8', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94A3B8' }, min: 0, max: 100 }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        /* ================= UTILITY TOAST NOTIFICATIONS ================= */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgClass = type === 'success' ? 'bg-emerald-500/90' : type === 'error' ? 'bg-red-500/90' : 'bg-purplePrimary/90';
+            
+            toast.className = `${bgClass} text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl backdrop-blur-md flex items-center space-x-2 transition-all transform translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        /* Initial Load trigger */
+        window.onload = function() {
+            // Set initial state
+            filterAndRenderJobs();
+        };
+    </script>
+</body>
+</html>
