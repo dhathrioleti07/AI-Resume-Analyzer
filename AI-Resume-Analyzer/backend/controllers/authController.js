@@ -33,8 +33,13 @@ async function register(req, res) {
       user: { id: user._id, name: user.name, email: user.email }
     });
   } catch (error) {
-    res.status(500).json({ message: "Registration failed. Please try again." });
-  }
+  console.error("REGISTER ERROR:", error);
+
+  res.status(500).json({
+    message: "Registration failed.",
+    error: error.message
+  });
+}
 }
 
 async function login(req, res) {
