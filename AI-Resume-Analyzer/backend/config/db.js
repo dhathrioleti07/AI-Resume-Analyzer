@@ -11,7 +11,7 @@ async function connectDB() {
     await mongoose.connect(uri);
     console.log("MongoDB connected");
   } catch (error) {
-    console.error("MongoDB connection failed:", error.message);
+    console.error("MongoDB connection failed:", error);
     console.warn("The API will continue running, but database features will be unavailable.");
   }
 }
